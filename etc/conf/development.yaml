@@ -1,0 +1,323 @@
+##########################################################################################################################################################################
+# META description
+#
+#   @group            (Required)  : used as group name
+#   @namespace        (Required)  : used as default name for service
+#   @version          (Ignore)    : commit tag will be injected during app build
+#   @commit           (Ignore)    : commit hash will be injected during app build.
+#   @go               (Ignore)    : go version
+#   @description      (Required)  : service description
+#   @host             (Required)  : the host will be used in the swagger docs
+#   @basepath         (Required)  : service base path displayed in swagger docs
+##########################################################################################################################################################################
+Meta :
+  group : "platform"
+  <<: &namespace
+    namespace : "omnichannelsvc"
+  <<: &meta
+    version : "n/a"
+    build : "n/a"
+    commit : "n/a"
+    go : "n/a"
+  description : "API for Omni Channel"
+  #[START-REPLACE-2]
+  host : "localhost:8080"
+  basePath : "/v1/"
+#[END-REPLACE-2]
+
+##########################################################################################################################################################################
+# LOG configuration
+#
+# @level              (Required)  : info (default) | trace, debug, info, warn, error, fatal, panic (case sensitive - should be in lower case)
+# @format             (Required)  : json (default) | text, json (case sensitive - should be in lower case)
+# @output             (Required)  : ( file | stdout | discard ) (case sensitive - should be in lower case)
+# @logOutputPath      (Optional)  : If $log.output.mode == "file" this field is mandatory. - default : "./etc/log/app.log"
+# @hooks
+#   @telemetry                    : report number of error to telemetry service. e.g. Prometheus
+#     @enabled        (Required)  : always enable this one to provide better app observability.
+#   @redisELK         (Optional)  : sending all logs to redis. This feature will be helpful for during high load logging purpose.
+#                                 where the service will be pooling all the logs in the redis and consumed by log aggregator such
+#                                 as logstash then dump to log storage. All log will be converted to logstash format.
+#     @enabled        (Required)  : enabled the redis ELK
+#     @host           (Required)  : Redis Host URL
+#     @port           (Required)  : Redis Port
+#     @password       (Optional)  : Redis Password
+#     @key            (Required)  : Redis Key
+#     @format         (Required)  : Log Format default to v0
+#     @app            (Required)  : App name. It should be equal to our app name in $.meta.namespace
+#     @hostname       (Required)  : App Host. It should be equal to our app name in $.meta.namespace
+#     @DB             (Optional)  : Redis DB
+#     @TTL            (Optional)  : Define log record Time To Live
+# @defaultFields      (Optional)  : Default Log Fields (k,v) that will be appended in logs
+#                                 - default : reference from $.meta
+#                                             reference from $.meta.namespace
+# @contextFields      (Optional)  : Default Log Fields (k,v) taken from Request Header Context
+#                                 - e.g. : "request_id" : value of "x-request-id"
+##########################################################################################################################################################################
+Log :
+  level : "trace"
+  formatter : "text"
+  output : "stdout"
+  logOutputPath : "./etc/log/app.log"
+  hooks :
+    telemetry :
+      enabled : true
+    redisELK :
+      enabled : false
+      host : 'localhost'
+      port : "6379"
+      password : "password"
+      key : "my_redis_key"
+      format : "v0"
+      app : "myapp"
+      hostname : "hostname"
+      DB : "0"
+      TTL : "3600"
+  defaultFields :
+    <<: *namespace
+    <<: *meta
+  contextFields :
+    path : "x-server-route"
+    request_id : "x-request-id"
+    method : "x-request-method"
+    scheme : "x-request-scheme"
+    user_id : "x-user-id"
+    merchant_id : "x-merchant-id"
+    session_id : "x-session-id"
+    client_ip : "x-forwarded-for"
+    bpm_process_id : "x-bpm-process-id"
+    bpm_workflow_id : "x-bpm-workflow-id"
+    bpm_instance_id : "x-bpm-instance-id"
+    bpm_job_id : "x-bpm-job-id"
+    bpm_job_type : "x-bpm-job-type"
+##########################################################################################################################################################################
+# HTTPMux configuration
+#
+# Platform is for displaying the static configuration run by the server.
+# However, all secrets taken from remote KV won't be displayed.
+# @Platform           (Optional)
+#   @Enabled          (Required)  : Enabling the platform endpoint
+#   @Path             (Required)  : Defined Path for displaying platform configuration
+#
+# Swagger endpoint to server swagger docs directly from the service
+# @Swagger            (Optional)
+#   @Enabled          (Required)  : Enabling the swagger docs
+#   @Path             (Required)  : Swagger Path
+#   @DocFile          (Required)  : Doc file Path
+#
+# Cors handle CORS
+# @Cors               (Optional)
+#   @Enabled          (Required)  : Enabling the cors handler
+#   @Mode             (Required)  : Available Mode (custom | allowall | default)
+#   @AllowedOrigins   (Required)  : List of allowed origins (custom mode only)
+#   @AllowedMethods   (Required)  : List of allowed methods (custom mode only)
+#   @AllowedHeaders   (Required)  : List of allowed headers (custom mode only)
+#   @ExposedHeaders   (Required)  : List of exposed headers (custom mode only)
+#   @MaxAge           (Required)  : Max Age (custom mode only)
+#   @AllowCredentials (Required)  : Allow Credentials, Cookies, HTTP Authentication, Client Side SSL (custom mode only)
+#   @OptionsPassthrough(Required) : Allow OPTIONS method (custom mode only)
+#   @Debug            (Required)  : Debug mode (custom mode only)
+##########################################################################################################################################################################
+HTTPMux :
+  Platform :
+    Enabled : true
+    Path : "/platform/"
+    PathRemote : "/platform/remote"
+  #[START-REPLACE-3]
+  Swagger:
+    Enabled : true
+    Path : "/swagger/"
+    DocFile : "doc.json"
+  #[END-REPLACE-3]
+  Cors :
+    Enabled : true
+    Mode : "allowall"
+    AllowedOrigins :
+      - "http://localhost:8080"
+      - "http://localhost:8180"
+    AllowedMethods :
+      - "POST"
+      - "GET"
+      - "PATCH"
+      - "PUT"
+      - "DELETE"
+    AllowedHeaders :
+      - "X-Requested-With"
+      - "Authorization"
+    ExposedHeaders :
+      - "x-request-id"
+    MaxAge : "65000"
+    AllowCredentials : true
+    OptionsPassthrough : true
+    Debug : false
+##########################################################################################################################################################################
+# Telemetry configuration
+##########################################################################################################################################################################
+Telemetry :
+  Exporters :
+    Profiler :
+      address : "127.0.0.1"
+      port : "5868"
+      readHeaderTimeout : 60s
+      readTimeout : 60s
+      writeTimeout : 60s
+      mutexProfileFraction : "5"
+      pprof :
+        PathPrefix : "/debug/pprof" #must be followed by /debug/
+        enabled : true
+        cmdline : true
+        profile : true
+        symbol : true
+        trace : true
+    Stats :
+      address : "0.0.0.0"
+      port : "5867"
+      readHeaderTimeout: 2s
+      readTimeout : 2s
+      writeTimeout : 2s
+      viewReportingPeriod : 5s
+      RecordPeriod : 5s
+      zpage :
+        enabled : false
+        path : "/zpage"
+      prometheus :
+        <<: *namespace
+        enabled : true
+        path : "/metrics"
+      opencensus :
+        <<: *namespace
+        enabled : true
+        insecure : true
+        reconnectionPeriod : 5s
+        agentEndpoint : "ship-dev:55678"
+        headers : #should be map string
+        compressor : ""
+      datadog :
+        <<: *namespace
+        enabled : false
+        agentEndpoint : "localhost:5667"
+        Tags : #[]string
+        GlobalTags : #map[string]interface{}
+      stackdriver :
+        enabled : false
+        projectId : "my-project"
+        location : "my-location"
+        metricPrefix : ""
+        batchInterval : 1s
+        timeout : 1s
+        bundleDelayThreshold : 1s
+        bundleCountThreshold : "1"
+
+    Tracing :
+      SamplingProbabilty : "1" #1 meaning always
+      jaeger :
+        <<: *namespace
+        enabled : false
+        agentEndpoint : "ship-dev:6831"
+        collectorEndpoint : "http://localhost:14268/api/traces"
+        # collectorEndpoint : "http://ship-dev:14268/api/traces"
+        username : ""
+        password : ""
+        bufferMaxCount : "10"
+      datadog :
+        <<: *namespace
+        enabled : false
+        agentEndpoint : "localhost:5667"
+        Tags : #[]string
+        GlobalTags : #map[string]interface{}
+      zipkin :
+        <<: *namespace
+        enabled : false
+        agentEndpoint : "ship-dev:6831"
+        collectorEndpoint : "http://ship-dev:9411/api/v2/spans"
+        batchSize : "100"
+        batchInterval : 3s
+        maxBacklog : "200"
+        timeout : 2s
+      opencensus :
+        <<: *namespace
+        enabled : true
+        insecure : true
+        reconnectionPeriod : 5s
+        agentEndpoint : "ship-dev:55678"
+        headers : #should be map string
+        compressor : ""
+      stackdriver :
+        <<: *namespace
+        enabled : false
+        projectId : "my-project"
+        location : "my-location"
+        metricPrefix : ""
+        batchInterval : 1s
+        timeout : 1s
+        bundleDelayThreshold : 1s
+        bundleCountThreshold : "1"
+        traceSpansBufferMaxBytes : "1024"
+        defaultTraceAttributes : #map[string]interface{}
+##########################################################################################################################################################################
+# HTTPServer configuration
+#
+# @address            (Required)  : host address
+# @port               (Required)  : host port
+# @TLSEnabled         (Required)  : enable SSL/ TLS
+# @TLSPort            (Required)  : port for tls
+# @TLSCertFile        (Required)  : path of cert.pem file
+# @TLSKeyFile         (Required)  : path of key.pem file
+# @readHeaderTimeout  (Required)  : read header timeout for incoming http request
+# @readTimeout        (Required)  : read timeout for incoming http request
+# @writeTimeout       (Required)  : write timeout during sending http response
+# @idleTimeout        (Required)  : maximum allowed time duration for idle http request
+##########################################################################################################################################################################
+HTTPServer :
+  address : "127.0.0.1"
+  port : "8080"
+  TLSPort : "8443"
+  TLSEnabled : false
+  TLSCertFile :  "./etc/tls/cert.pem"
+  TLSKeyFile :  "./etc/tls/key.pem"
+  readHeaderTimeout : 1s
+  readTimeout : 2s
+  writeTimeout : 2s
+  idleTimeout : 1s
+##########################################################################################################################################################################
+# Health configuration
+#
+# Health is app health checker to determine the app liveness and readines status.
+# @WaitBeforeContinue (Required)  : App will not start listening if the app is not ready yet.
+# @MaxWaitingTime     (Required)  : Maximum waiting time for app to be ready. It this duration is passed then app will be terminated.
+# @Liveness           (Required)
+#   @Enabled          (Required)  : enable liveness check
+#   @InitialDelaySec  (Required)  : initial delay sec before we start check the liveness
+#   @PeriodSec        (Required)  : liveness check period
+#   @CheckTimeout     (Required)  : liveness check timeout
+#   @SuccessThreshold (Required)  : liveness check must surpass this threshold before putting app in healthy status
+#   @FailureThreshold (Required)  : liveness check must surpass this threshold before putting app in unhealthy status
+#   @Endpoint         (Required)  : should be set to /healthz to prevent trace for healthcheck
+# @Readiness          (Required)
+#   @Enabled          (Required)  : enable readiness check
+#   @InitialDelaySec  (Required)  : initial delay sec before we start check the readiness
+#   @PeriodSec        (Required)  : readiness check period
+#   @CheckTimeout     (Required)  : readiness check timeout
+#   @SuccessThreshold (Required)  : readiness check must surpass this threshold before putting app in healthy status
+#   @FailureThreshold (Required)  : readiness check must surpass this threshold before putting app in unhealthy status
+#   @Endpoint         (Required)  : should be set to /_ah/health to prevent trace for healthcheck
+##########################################################################################################################################################################
+Health:
+  waitBeforeContinue: true
+  maxWaitingTime: 5s
+  liveness:
+    Enabled: true
+    InitialDelaySec: 0s
+    PeriodSec: 2s
+    CheckTimeout: 5s
+    SuccessThreshold: "1"
+    FailureThreshold: "3"
+    Endpoint: "/healthz"
+  readiness:
+    Enabled: true
+    InitialDelaySec: 0s
+    PeriodSec: 2s
+    CheckTimeout: 5s
+    SuccessThreshold: "1"
+    FailureThreshold: "3"
+    Endpoint: "/_ah/health"
